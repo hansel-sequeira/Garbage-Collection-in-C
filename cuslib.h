@@ -4,19 +4,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define HEAP_MAX_CAP 10000
+#define HEAP_MAX_CAP_BYTES 10000
+#define HEAP_MAX_CAP_WORDS (HEAP_MAX_CAP_BYTES / sizeof(uintptr_t))
 #define MAX_CHUNKS 1000
-#define MAX_FREE_CHUNKS 1000
 
 void *custom_alloc(size_t required_size_bytes);
 void custom_free(void *ptr);
+void custom_gc();
 
-extern uintptr_t heap[HEAP_MAX_CAP / sizeof(uintptr_t)];
+extern uintptr_t heap[HEAP_MAX_CAP_WORDS];
+extern uintptr_t *stack_base_ptr;
 
 typedef struct Chunk
 {
     uintptr_t *start;
-    size_t size;
+    size_t size; // size in words
 } Chunk;
 
 typedef struct Chunk_List

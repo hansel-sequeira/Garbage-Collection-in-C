@@ -34,8 +34,30 @@ void dump_tree(Node *root, int level)
 int main()
 {
 
-    Node *root = generate_tree(2);
+    stack_base_ptr = (uintptr_t *)__builtin_frame_address(0);
+
+    Node *root = generate_tree(3);
     dump_tree(root, 0);
+
+    size_t heap_ptrs_cnt = 0;
+    // for (size_t i = 0; i < allocated_chunk_list.chunk_count; i++)
+    // {
+    //     Chunk chunk = allocated_chunk_list.chunks[i];
+    //     // iterate for every word of this chunk.
+    //     for (size_t j = 0; j < chunk.size; j++)
+    //     {
+    //         uintptr_t *ptr = (uintptr_t *)*(chunk.start + j);
+    //         if (ptr >= heap && ptr < heap + HEAP_MAX_CAP_WORDS)
+    //         {
+    //             // valid pointer referencing some word on the heap
+    //             printf("Captured heap pointer: %p\n", ptr);
+    //             heap_ptrs_cnt++;
+    //         }
+    //     }
+    // }
+    // printf("No. of pointers to the heap: %zu\n", heap_ptrs_cnt);
+
+    custom_gc();
 
     printf("Allocated chunks..\n");
     chunk_list_dump(&allocated_chunk_list);

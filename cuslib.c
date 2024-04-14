@@ -6,7 +6,8 @@
 #define HEAP_MAX_CAP 10000
 #define MAX_CHUNKS 1000
 
-uintptr_t heap[HEAP_MAX_CAP / sizeof(uintptr_t)] = {0};
+uintptr_t heap[HEAP_MAX_CAP_WORDS];
+uintptr_t *stack_base_ptr = 0;
 
 Chunk_List allocated_chunk_list = {0};
 Chunk_List freed_chunk_list = {
@@ -133,4 +134,21 @@ void custom_free(void *ptr)
     chunk_list_insert(&freed_chunk_list, allocated_chunk_list.chunks[idx].start, allocated_chunk_list.chunks[idx].size);
     qsort(&(freed_chunk_list.chunks), freed_chunk_list.chunk_count, sizeof(freed_chunk_list.chunks[0]), chunk_comparator_size);
     chunk_list_free(&allocated_chunk_list, idx);
+}
+
+void custom_gc()
+{
+    uintptr_t *curr_ptr = __builtin_frame_address(0);
+    size_t stack_ptr_count = 0;
+    while (curr_ptr < stack_base_ptr)
+    {
+        uintptr_t *curr_word_val = (uintptr_t *)(*curr_ptr);
+        if (curr_word_val >= heap && curr_word_val < heap + HEAP_MAX_CAP_WORDS)
+        {
+            printf("Captured stack pointer: %p\n", curr_word_val);
+            stack_ptr_count++;
+        }
+        curr_ptr++;
+    }
+    printf("No. of stack pointers: %zu\n", stack_ptr_count);
 }
