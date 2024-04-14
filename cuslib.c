@@ -6,7 +6,7 @@
 #define MAX_CHUNKS 1000
 #define MAX_FREE_CHUNKS 1000
 
-char heap[HEAP_MAX_CAP] = {0};
+void *heap[HEAP_MAX_CAP / sizeof(void *)] = {0};
 
 typedef struct Chunk
 {
@@ -109,22 +109,26 @@ void chunk_list_insert(Chunk_List *list, void *ptr, size_t size)
     list->chunk_count++;
 }
 
-void *custom_alloc(size_t required_size)
+void *custom_alloc(size_t required_size_bytes)
 {
-    if (required_size == 0)
+    if (required_size_bytes == 0)
         return NULL;
+
+    chunk_list_compaction(&freed_chunk_list);
+
+    size_t required_size_words = (required_size_bytes / sizeof(void *)) + ((required_size_bytes % sizeof(void *)) ? 1 : 0);
 
     for (size_t i = 0; i < freed_chunk_list.chunk_count; i++)
     {
-        if (freed_chunk_list.chunks[i].size >= required_size)
+        if (freed_chunk_list.chunks[i].size >= required_size_words)
         {
             Chunk victim_free_chunk = freed_chunk_list.chunks[i];
             void *ptr = victim_free_chunk.start;
-            int remaining_size = victim_free_chunk.size - required_size;
-            chunk_list_insert(&allocated_chunk_list, ptr, required_size);
+            int remaining_size = victim_free_chunk.size - required_size_words;
+            chunk_list_insert(&allocated_chunk_list, ptr, required_size_words);
             chunk_list_free(&freed_chunk_list, i);
             if (remaining_size > 0)
-                chunk_list_insert(&freed_chunk_list, ptr + required_size, remaining_size);
+                chunk_list_insert(&freed_chunk_list, ptr + required_size_words, remaining_size);
 
             return ptr;
         }
@@ -141,21 +145,19 @@ void custom_free(void *ptr)
     // remove this from the allocated chunk list and insert in the freed chunk list
     chunk_list_insert(&freed_chunk_list, allocated_chunk_list.chunks[idx].start, allocated_chunk_list.chunks[idx].size);
     qsort(&(freed_chunk_list.chunks), freed_chunk_list.chunk_count, sizeof(freed_chunk_list.chunks[0]), chunk_comparator_size);
-    chunk_list_compaction(&freed_chunk_list);
     chunk_list_free(&allocated_chunk_list, idx);
 }
 
 int main()
 {
 
-    void *ptr[10] = {0};
-    for (int i = 0; i < 10; i++)
+    void *ptr[11] = {0};
+    for (int i = 0; i <= 10; i++)
     {
         ptr[i] = custom_alloc(i);
+        if (i == 6 || i == 7)
+            custom_free(ptr[i]);
     }
-
-    custom_free(ptr[7]);
-    custom_free(ptr[6]);
 
     printf("Allocated chunks..\n");
     chunk_list_dump(&allocated_chunk_list);
