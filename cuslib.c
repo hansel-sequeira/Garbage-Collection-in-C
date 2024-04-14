@@ -1,13 +1,12 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include "cuslib.h"
-
-#define HEAP_MAX_CAP 10000
-#define MAX_CHUNKS 1000
 
 uintptr_t heap[HEAP_MAX_CAP_WORDS];
 uintptr_t *stack_base_ptr = 0;
+bool visited[] = {0};
 
 Chunk_List allocated_chunk_list = {0};
 Chunk_List freed_chunk_list = {
@@ -98,9 +97,30 @@ void chunk_list_insert(Chunk_List *list, uintptr_t *ptr, size_t size)
     list->chunk_count++;
 }
 
+void mark_chunks(uintptr_t *start, const uintptr_t *end)
+{
+    while (start <= end)
+    {
+        uintptr_t *word_val = (uintptr_t *)(*start);
+        for (size_t i = 0; i < allocated_chunk_list.chunk_count; i++)
+        {
+            Chunk chunk = allocated_chunk_list.chunks[i];
+            if (word_val >= chunk.start && word_val < chunk.start + chunk.size)
+            {
+                if (!visited[i])
+                {
+                    visited[i] = true;
+                    mark_chunks(chunk.start, chunk.start + chunk.size);
+                }
+            }
+        }
+        start++;
+    }
+}
+
 void *custom_alloc(size_t required_size_bytes)
 {
-    // chunk_list_compaction(&freed_chunk_list);
+    chunk_list_compaction(&freed_chunk_list);
 
     size_t required_size_words = (required_size_bytes + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
     if (required_size_words == 0)
@@ -138,17 +158,15 @@ void custom_free(void *ptr)
 
 void custom_gc()
 {
-    uintptr_t *curr_ptr = __builtin_frame_address(0);
-    size_t stack_ptr_count = 0;
-    while (curr_ptr < stack_base_ptr)
+    uintptr_t *curr_ptr = (uintptr_t *)__builtin_frame_address(0);
+    memset(visited, false, sizeof(visited));
+    mark_chunks(curr_ptr, stack_base_ptr + 1);
+
+    for (size_t i = 0; i < allocated_chunk_list.chunk_count; i++)
     {
-        uintptr_t *curr_word_val = (uintptr_t *)(*curr_ptr);
-        if (curr_word_val >= heap && curr_word_val < heap + HEAP_MAX_CAP_WORDS)
-        {
-            printf("Captured stack pointer: %p\n", curr_word_val);
-            stack_ptr_count++;
-        }
-        curr_ptr++;
+        printf("start: %p, size: %zu, isVis: %s\n",
+               allocated_chunk_list.chunks[i].start,
+               allocated_chunk_list.chunks[i].size,
+               visited[i] ? "true" : "false");
     }
-    printf("No. of stack pointers: %zu\n", stack_ptr_count);
 }

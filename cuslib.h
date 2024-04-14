@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #define HEAP_MAX_CAP_BYTES 10000
 #define HEAP_MAX_CAP_WORDS (HEAP_MAX_CAP_BYTES / sizeof(uintptr_t))
@@ -14,6 +15,7 @@ void custom_gc();
 
 extern uintptr_t heap[HEAP_MAX_CAP_WORDS];
 extern uintptr_t *stack_base_ptr;
+extern bool visited[MAX_CHUNKS];
 
 typedef struct Chunk
 {

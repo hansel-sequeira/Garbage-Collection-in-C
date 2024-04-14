@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "cuslib.h": "c"
+        "cuslib.h": "c",
+        "stdio.h": "c",
+        "assert.h": "c",
+        "stdlib.h": "c"
     }
 }
