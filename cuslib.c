@@ -1,24 +1,13 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include "./cuslib.h"
 
 #define HEAP_MAX_CAP 10000
 #define MAX_CHUNKS 1000
 #define MAX_FREE_CHUNKS 1000
 
 void *heap[HEAP_MAX_CAP / sizeof(void *)] = {0};
-
-typedef struct Chunk
-{
-    void *start;
-    size_t size;
-} Chunk;
-
-typedef struct Chunk_List
-{
-    Chunk chunks[MAX_CHUNKS];
-    size_t chunk_count;
-} Chunk_List;
 
 Chunk_List allocated_chunk_list = {0};
 Chunk_List freed_chunk_list = {
@@ -146,22 +135,4 @@ void custom_free(void *ptr)
     chunk_list_insert(&freed_chunk_list, allocated_chunk_list.chunks[idx].start, allocated_chunk_list.chunks[idx].size);
     qsort(&(freed_chunk_list.chunks), freed_chunk_list.chunk_count, sizeof(freed_chunk_list.chunks[0]), chunk_comparator_size);
     chunk_list_free(&allocated_chunk_list, idx);
-}
-
-int main()
-{
-
-    void *ptr[11] = {0};
-    for (int i = 0; i <= 10; i++)
-    {
-        ptr[i] = custom_alloc(i);
-        if (i == 6 || i == 7)
-            custom_free(ptr[i]);
-    }
-
-    printf("Allocated chunks..\n");
-    chunk_list_dump(&allocated_chunk_list);
-    printf("Freed chunks..\n");
-    chunk_list_dump(&freed_chunk_list);
-    return 0;
 }
