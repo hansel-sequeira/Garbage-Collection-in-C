@@ -4,8 +4,9 @@
 #include <string.h>
 #include "cuslib.h"
 
-uintptr_t heap[HEAP_MAX_CAP_WORDS];
+uintptr_t heap[HEAP_MAX_CAP_WORDS] = {0};
 uintptr_t *stack_base_ptr = 0;
+uintptr_t *leaked_chunks[MAX_CHUNKS] = {0};
 bool visited[] = {0};
 
 Chunk_List allocated_chunk_list = {0};
@@ -159,14 +160,20 @@ void custom_free(void *ptr)
 void custom_gc()
 {
     uintptr_t *curr_ptr = (uintptr_t *)__builtin_frame_address(0);
+    size_t leaked_chunks_cnt = 0;
     memset(visited, false, sizeof(visited));
+    memset(leaked_chunks, 0, sizeof(leaked_chunks));
     mark_chunks(curr_ptr, stack_base_ptr + 1);
 
     for (size_t i = 0; i < allocated_chunk_list.chunk_count; i++)
     {
-        printf("start: %p, size: %zu, isVis: %s\n",
-               allocated_chunk_list.chunks[i].start,
-               allocated_chunk_list.chunks[i].size,
-               visited[i] ? "true" : "false");
+        if (!visited[i])
+        {
+            printf("Freeing: %p\n", allocated_chunk_list.chunks[i].start);
+            leaked_chunks[leaked_chunks_cnt++] = allocated_chunk_list.chunks[i].start;
+        }
     }
+
+    for (size_t i = 0; i < leaked_chunks_cnt; i++)
+        custom_free(leaked_chunks[i]);
 }

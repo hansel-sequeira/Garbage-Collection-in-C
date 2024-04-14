@@ -14,6 +14,7 @@ void custom_free(void *ptr);
 void custom_gc();
 
 extern uintptr_t heap[HEAP_MAX_CAP_WORDS];
+extern uintptr_t *leaked_chunks[MAX_CHUNKS];
 extern uintptr_t *stack_base_ptr;
 extern bool visited[MAX_CHUNKS];
 

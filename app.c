@@ -34,6 +34,9 @@ void dump_tree(Node *root, int level)
 int main()
 {
 
+    for (size_t i = 0; i < 10; i++)
+        custom_alloc(i);
+
     stack_base_ptr = (uintptr_t *)__builtin_frame_address(0);
 
     Node *root = generate_tree(3);
@@ -41,6 +44,8 @@ int main()
 
     custom_gc();
 
+    root = NULL;
+    custom_gc();
     printf("Allocated chunks..\n");
     chunk_list_dump(&allocated_chunk_list);
     printf("Freed chunks..\n");
