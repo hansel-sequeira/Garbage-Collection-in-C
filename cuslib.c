@@ -1,19 +1,18 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
-#include "./cuslib.h"
+#include "cuslib.h"
 
 #define HEAP_MAX_CAP 10000
 #define MAX_CHUNKS 1000
-#define MAX_FREE_CHUNKS 1000
 
-void *heap[HEAP_MAX_CAP / sizeof(void *)] = {0};
+uintptr_t heap[HEAP_MAX_CAP / sizeof(uintptr_t)] = {0};
 
 Chunk_List allocated_chunk_list = {0};
 Chunk_List freed_chunk_list = {
     .chunk_count = 1,
     .chunks[0] = {
-        .size = sizeof(heap),
+        .size = sizeof(heap) / sizeof(uintptr_t),
         .start = heap}};
 
 int chunk_comparator_size(const void *a, const void *b)
@@ -30,7 +29,7 @@ int chunk_comparator_address(const void *a, const void *b)
     return (a_chunk->start - b_chunk->start);
 }
 
-int chunk_list_search(Chunk_List *list, void *ptr)
+int chunk_list_search(Chunk_List *list, uintptr_t *ptr)
 {
     const Chunk key_chunk = {
         .start = ptr};
@@ -80,7 +79,7 @@ void chunk_list_dump(Chunk_List *list)
     }
 }
 
-void chunk_list_insert(Chunk_List *list, void *ptr, size_t size)
+void chunk_list_insert(Chunk_List *list, uintptr_t *ptr, size_t size)
 {
     assert(list->chunk_count < MAX_CHUNKS);
     list->chunks[list->chunk_count].start = ptr;
@@ -100,24 +99,23 @@ void chunk_list_insert(Chunk_List *list, void *ptr, size_t size)
 
 void *custom_alloc(size_t required_size_bytes)
 {
-    if (required_size_bytes == 0)
+    // chunk_list_compaction(&freed_chunk_list);
+
+    size_t required_size_words = (required_size_bytes + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
+    if (required_size_words == 0)
         return NULL;
-
-    chunk_list_compaction(&freed_chunk_list);
-
-    size_t required_size_words = (required_size_bytes / sizeof(void *)) + ((required_size_bytes % sizeof(void *)) ? 1 : 0);
 
     for (size_t i = 0; i < freed_chunk_list.chunk_count; i++)
     {
         if (freed_chunk_list.chunks[i].size >= required_size_words)
         {
             Chunk victim_free_chunk = freed_chunk_list.chunks[i];
-            void *ptr = victim_free_chunk.start;
-            int remaining_size = victim_free_chunk.size - required_size_words;
+            uintptr_t *ptr = victim_free_chunk.start;
+            int remaining_size_words = victim_free_chunk.size - required_size_words;
             chunk_list_insert(&allocated_chunk_list, ptr, required_size_words);
             chunk_list_free(&freed_chunk_list, i);
-            if (remaining_size > 0)
-                chunk_list_insert(&freed_chunk_list, ptr + required_size_words, remaining_size);
+            if (remaining_size_words > 0)
+                chunk_list_insert(&freed_chunk_list, ptr + required_size_words, remaining_size_words);
 
             return ptr;
         }
